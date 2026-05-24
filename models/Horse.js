@@ -79,7 +79,7 @@ horseSchema.pre("save", async function (next) {
             return next(new Error("Podana matka nie istnieje w bazie!"));
         }
 
-        if(motherHorse.gender !== "ogier") {
+        if(motherHorse.gender !== "klacz") {
             return next(new Error("Matka może być wyłącznie klaczą!"));
         }
 
