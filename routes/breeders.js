@@ -18,7 +18,7 @@ router.get("/:id", async (req, res) => {
     try {
         const breeder = await Breeder.findById(req.params.id).populate("country");
         if(!breeder) {
-            return res.status(404).json({ error: "Nie znaleziono hodowcy o podanym ID!" });
+            return res.status(404).json({ message: "Nie znaleziono hodowcy o podanym ID!" });
         }
 
         return res.status(200).json(breeder)
@@ -59,7 +59,7 @@ router.put("/:id", async (req, res) => {
         )
 
         if(!updatedBreeder) {
-            return res.status(404).json({ error: "Nie znaleziono hodowcy do edycji"});
+            return res.status(404).json({ message: "Nie znaleziono hodowcy do edycji"});
         }
 
         res.status(200).json(updatedBreeder);
@@ -72,7 +72,7 @@ router.delete("/:id", async (req, res) => {
     try {
         const deletedBreeeder = await Breeder.findByIdAndDelete(req.params.id);
         if(!deletedBreeeder) {
-            return res.status(404).json({ error: "Nie znaleziono hodowcy do usunięcia: "});
+            return res.status(404).json({ message: "Nie znaleziono hodowcy do usunięcia: "});
         }
 
        return res.status(200).json(deletedBreeeder);

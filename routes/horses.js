@@ -18,7 +18,7 @@ router.get("/:id", async (req, res) => {
     try {
         const horse = await Horse.findById(req.params.id).populate("breeder").populate("birthCountry");
         if(!horse) {
-            return res.status(404).json({ error: "Nie znaleziono konia o podanym ID!" });
+            return res.status(404).json({ message: "Nie znaleziono konia o podanym ID!" });
         }
 
         return res.status(200).json(horse);
@@ -66,7 +66,7 @@ router.put("/:id", async (req, res) => {
         );
 
         if(!updatedHorse) {
-            return res.status(404).json({ error: "Nie znaleziono konia do edycji!" });
+            return res.status(404).json({ message: "Nie znaleziono konia do edycji!" });
         }
 
         return res.status(200).json(updatedHorse);
@@ -79,7 +79,7 @@ router.delete("/:id", async (req, res) => {
     try {
         const deletedHorse = await Horse.findByIdAndDelete(req.params.id);
         if(!deletedHorse) {
-            return res.status(404).json({ error: "Nie znaleziono konia do usunięcia" });
+            return res.status(404).json({ message: "Nie znaleziono konia do usunięcia" });
         }
 
         return res.status(200).json(deletedHorse);

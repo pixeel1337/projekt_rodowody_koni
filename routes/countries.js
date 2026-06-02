@@ -18,7 +18,7 @@ router.get("/:id", async (req, res) => {
     try {
         const country = await Country.findById(req.params.id);
         if(!country) {
-            return res.status(404).json({ error: "Nie znaleziono kraju o podanym kodzie ISO!" });
+            return res.status(404).json({ message: "Nie znaleziono kraju o podanym kodzie ISO!" });
         }
 
         return res.status(200).json(country);
@@ -47,7 +47,7 @@ router.put("/:id", async (req, res) => {
         );
 
         if(!updatedCountry) {
-            return res.status(404).json({ error: "Nie znaleziono kraju do edycji!" });
+            return res.status(404).json({ message: "Nie znaleziono kraju do edycji!" });
         }
 
         return res.status(200).json(updatedCountry);
@@ -60,7 +60,7 @@ router.delete("/:id", async (req, res) => {
     try {
         const deletedCountry = await Country.findByIdAndDelete(req.params.id);
         if(!deletedCountry) {
-            return res.status(404).json({ error: "Nie znaleziono kraju do usunięcia!" });
+            return res.status(404).json({ message: "Nie znaleziono kraju do usunięcia!" });
         }
 
         return res.status(200).json(deletedCountry);
