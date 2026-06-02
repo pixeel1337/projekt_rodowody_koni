@@ -3,55 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baza Rodowodów Koni</title>
+    <title>Logowanie do Systemu Rodowodów</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: 40px;
-            padding: 20px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #f8fafc;
         }
-        h1 {
-            color: #333;
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 400px;
+            color: #334155;
             text-align: center;
         }
-        .horse-card {
-            background-color: #fff;
+        .login-container h1 {
+            margin-bottom: 10px;
+            color: #0f172a;
+            font-size: 1.8rem;
+        }
+        .login-container p {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            font-size: 0.95rem;
         }
-        .btn {
-            display: inline-block;
-            padding: 8px 15px;
+        .btn-submit {
+            width: 100%;
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
             margin-top: 10px;
-            background-color: #007BFF;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 4px;
+            transition: background 0.2s;
         }
-        .btn:hover {
-            background-color: #0056b3;
+        .btn-submit:hover {
+            background: #0369a1;
         }
     </style>
 </head>
 <body>
-    <h1>Lista koni w naszej bazie</h1>
-    <p style="text-align: center;">Witaj w systemie bazy rodowodów koni!</p>
 
-    <div id="horses-list">
-         <% horses.forEach(horse => { %>
-            <div class="horse-card">
-                <h2><%= horse.name %></h2>
-                
-                <p><strong>Płeć:</strong> <%= horse.gender %></p>
-                <p><strong>Maść:</strong> <%= horse.color %></p>
-                <p><strong>Rok urodzenia:</strong> <%= horse.birthYear %></p>
-                
-                <a href="/horses/<%= horse._id %>/pedigree" class="btn">Zobacz rodowód</a>
+    <div class="login-container">
+        <h1>🐴 Stadnina Koni</h1>
+        <p>Zaloguj się, aby uzyskać dostęp do bazy rodowodów</p>
+
+        <form method="POST" action="/api/auth/login">
+            <div class="form-group">
+                <label for="login">Login administratora</label>
+                <input type="text" id="login" name="login" placeholder="Wpisz login" required>
             </div>
-        <% }) %>
+            <div class="form-group">
+                <label for="password">Hasło</label>
+                <input type="password" id="password" name="password" placeholder="Wpisz hasło" required>
+            </div>
+            <button type="submit" class="btn-submit">Zaloguj się</button>
+        </form>
     </div>
-</body> 
+
+</body>
 </html>
