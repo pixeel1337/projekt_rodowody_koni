@@ -11,6 +11,8 @@ connectDB();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("view engine", "ejs");
+app.use("views", "./views");
 app.use("/api/countries", countryRouter);
 app.use("/api/breeders", breederRouter);
 app.use("/api/horses", horseRouter);
