@@ -88,11 +88,102 @@
             box-shadow: 0 2px 4px -1px rgba(0 0 0/ 0.05);
             border-top: 5px solid #0284c7;
         }
-        
+        .card-ogier { border-top-color: #0284c7; }
+        .card-klacz { border-top-color: #db2777; }
 
+        .horse-card h3 {
+            margin: 0 0 12px;
+            font-size: 1.3rem;
+        }
 
+        .horse-card p {
+            margin: 6px 0;
+            color: #475569;
+        }
+
+        .card-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .btn-view { 
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .admin-ops {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .btn-edit {
+            background: #fef08a;
+            color: #854d0e;
+        }
+        .btn-delete {
+            background: #fee2e2;
+            color: #991b1b;
+        }
     </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <h2>Baza rodowodów Koni (Zalogowano jako administrator)</h2>
+            <form action="/api/auth/logout" method="POST">
+                <button type="submit" class="btn-logout">Wyloguj się</button>
+            </form>
+        </div>
 
+        <div class="actions-bar">
+            <form class="search-panel" action="/dashboard" method="GET">
+                <input type="text" name="search" placeholder="Wyszukaj konia po imieniu..." value="<%= searchQuery %>">
+                <select name="gender">
+                    <option value="">Wszystkie rasy</option>
+                    <option value="ogier">Ogiery</option>
+                    <option value="klacz">Klacze</option>
+                </select>
+                    <button type="submit" class="btn-action">Filtruj</button>
+            </form>
+            <a href="/add" class="btn btn-add">➕ Dodaj nowego konia</a>
+        </div>
+
+        <div class="grid">
+             <% horses.forEach(horse => { %>
+                <div class="horse-card <%= horse.gender === 'ogier' ? 'card-ogier' : (horse.gender === 'klacz' ? 'card-klacz' : '') %>">
+                    <h3><%= horse.name %></h3>
+                    <p><strong>Płeć:</strong> <%= horse.gender %></p>
+                    <p><strong>Maść:</strong> <%= horse.ointment %></p>
+                    <p><strong>Rok urodzenia:</strong> <%= horse.birthYear %></p>
+                    
+                    <div class="card-buttons">
+                        <a href="/horses/<%= horse._id %>/pedigree" class="btn btn-view">🔎 Wybierz i zobacz rodowód</a>
+                        
+                        <div class="admin-ops">
+                            <a href="/horses/<%= horse._id %>/edit" class="btn btn-edit">Edytuj</a>
+                            <a href="/api/horses/<%= horse._id %>/delete" class="btn btn-delete">Usuń</a>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+    </div>
+
+</body>
+
+        
 
 
 </html>
