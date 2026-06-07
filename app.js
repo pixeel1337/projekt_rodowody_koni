@@ -1,5 +1,6 @@
+import "dotenv/config";
 import express from "express";
-import session from "./config/passport.js";
+import session from "express-session";
 import { Admin } from "./models/Admin.js";
 import { connectDB } from "./config/db.js";
 import countryRouter from "./routes/countries.js";
@@ -8,8 +9,6 @@ import horseRouter from "./routes/horses.js";
 import viewRouter from "./routes/viewRoutes.js";
 import authRouter from "./routes/auth.js";
 import passport from "./config/passport.js";
-import "dotenv/config";
-
 
 const app = express();
 const PORT = 3000;
