@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodowód: <%= horse.name %></title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 40px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #0284c7;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        .btn-back {
+            background: #0f172a;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .pedigree-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        .pedigree-table td {
+            border: 1px solid #cbd5e1;
+            padding: 15px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+        .gender-ogier { 
+            background-color: #f0f9ff;
+            border-left: 5px solid #0284c7; 
+        }
+        .gender-klacz { 
+            background-color: #fdf2f8; 
+            border-left: 5px solid #db2777; 
+        }
+        .meta { 
+            font-size: 0.8rem; 
+            color: #64748b; 
+            margin-top: 4px; 
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+        <div class="header">
+            <div>
+                <h1>Rodowód konia: <%= horse.name %></h1>
+                <p>Płeć: <%= horse.gender %> | Rok urodzenia: <%= horse.birthYear %></p>
+            </div>
+            <a href="/dashboard" class="btn-back">⬅ Powrót do panelu</a>
+        </div>
+
+        <% 
+            function renderKoniaWTabeli(tree, pokolenie, maxPokolen) { 
+                if (!tree) {
+                    const pusteRzedy = Math.pow(2, maxPokolen - pokolenie);
+                    return `<td rowspan="${pusteRzedy}"><em>Brak danych przodka</em></td>`;
+                }
+                
+                const klasaPlci = tree.gender === 'ogier' ? 'gender-ogier' : 'gender-klacz';
+                
+                const kraj = tree.birthCountry ? tree.birthCountry.code : '??';
+            
+                const obliczonyRowspan = Math.pow(2, maxPokolen - pokolenie);
+                return `
+                    <td class="${klasaPlci}" rowspan="${obliczonyRowspan}">
+                        <strong>${tree.name}</strong>
+                        <div class="meta">${tree.birthYear} (${kraj})</div>
+                        <div class="meta">Maść: ${tree.ointment}</div>
+                    </td>
+                `;
+            }
+        %>
+
+        <div class="filter-box">
+            <form method="GET" action="">
+                <label><strong>Głębokość pokoleń w drzewie:</strong></label>
+                <select name="generations" onchange="this.form.submit()">
+                    <option value="2" <%= generations === 2 ? 'selected' : '' %>>2 Pokolenia (Tylko rodzice)</option>
+                    <option value="3" <%= generations === 3 ? 'selected' : '' %>>3 Pokolenia (Do dziadków)</option>
+                    <option value="4" <%= generations === 4 ? 'selected' : '' %>>4 Pokolenia (Do pradziadków)</option>
+                </select>
+            </form>
+        </div>
+
+        <table class="pedigree-table">
+            <%
+                // 1. Obliczamy ile dokładnie wierszy <tr> potrzebuje nasza tabela
+                const lacznieWierszy = Math.pow(2, generations - 1);
+
+                // 2. Generujemy wiersze w pętli od 0 do limitu
+                for (let i = 0; i < lacznieWierszy; i++) {
+            %>
+                <tr>
+                    <% if (i === 0) { %>
+                        <% const klasaGlowna = horse.gender === 'ogier' ? 'gender-ogier' : 'gender-klacz'; %>
+                        <td class="<%= klasaGlowna %>" rowspan="<%= lacznieWierszy %>">
+                            <div style="font-size: 1.1rem; font-weight: bold;"><%= horse.name %></div>
+                            <div class="meta"><%= horse.birthYear %> (<%= horse.birthCountry ? horse.birthCountry.code : '??' %>)</div>
+                            <div class="meta"><strong>PROBAND</strong></div>
+                        </td>
+                    <% } %>
+
+                    <% 
+                        const rowspanP1 = lacznieWierszy / 2;
+                        // Ojciec startuje w wierszu 0, Matka startuje w połowie tabeli
+                        if (i === 0) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree, 1, generations) %>
+                        <% } else if (i === rowspanP1) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree, 1, generations) %>
+                        <% } 
+                    %>
+
+                    <% 
+                        const rowspanP2 = lacznieWierszy / 4;
+                        // Dziadkowie pojawiają się co kwartał łącznej liczby wierszy
+                        if (i === 0) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree ? horse.fatherTree.fatherTree : null, 2, generations) %>
+                        <% } else if (i === rowspanP2) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree ? horse.fatherTree.motherTree : null, 2, generations) %>
+                        <% } else if (i === rowspanP2 * 2) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree ? horse.motherTree.fatherTree : null, 2, generations) %>
+                        <% } else if (i === rowspanP2 * 3) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree ? horse.motherTree.motherTree : null, 2, generations) %>
+                        <% } 
+                    %>
+
+                    <% if (generations >= 4) { 
+                        const rowspanP3 = lacznieWierszy / 8; // czyli dokładnie 1
+                        // W tym pokoneniu komórka pojawia się w każdym wierszu, odpowiednio wyciągając prarodzica
+                        if (i === 0) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree && horse.fatherTree.fatherTree ? horse.fatherTree.fatherTree.fatherTree : null, 3, generations) %>
+                        <% } else if (i === 1) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree && horse.fatherTree.fatherTree ? horse.fatherTree.fatherTree.motherTree : null, 3, generations) %>
+                        <% } else if (i === 2) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree && horse.fatherTree.motherTree ? horse.fatherTree.motherTree.fatherTree : null, 3, generations) %>
+                        <% } else if (i === 3) { %>
+                            <%- renderKoniaWTabeli(horse.fatherTree && horse.fatherTree.motherTree ? horse.fatherTree.motherTree.motherTree : null, 3, generations) %>
+                        <% } else if (i === 4) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree && horse.motherTree.fatherTree ? horse.motherTree.fatherTree.fatherTree : null, 3, generations) %>
+                        <% } else if (i === 5) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree && horse.motherTree.fatherTree ? horse.motherTree.fatherTree.motherTree : null, 3, generations) %>
+                        <% } else if (i === 6) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree && horse.motherTree.motherTree ? horse.motherTree.motherTree.fatherTree : null, 3, generations) %>
+                        <% } else if (i === 7) { %>
+                            <%- renderKoniaWTabeli(horse.motherTree && horse.motherTree.motherTree ? horse.motherTree.motherTree.motherTree : null, 3, generations) %>
+                        <% } 
+                    } %>
+                </tr>
+            <% } // Koniec pętli for %>
+        </table> </div>
+</body>
+</html>
