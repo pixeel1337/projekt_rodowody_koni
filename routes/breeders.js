@@ -2,26 +2,27 @@ import express from "express";
 import { Breeder } from "../models/Breeder.js";
 import { Country } from "../models/Country.js";
 
-const router = express.Router()
+const router = express.Router();
 
 router.get("/", async (req, res) => {
     try {
         const breeders = await Breeder.find({}).populate("country");
-
         return res.status(200).json(breeders);
     } catch(err) {
         return res.status(500).json({ error: "Błąd serwera: " + err.message });
     }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:name", async (req, res) => {
     try {
-        const breeder = await Breeder.findById(req.params.id).populate("country");
+        const breederName = req.params.name;
+        
+        const breeder = await Breeder.findOne({ name: breederName }).populate("country");
         if(!breeder) {
-            return res.status(404).json({ message: "Nie znaleziono hodowcy o podanym ID!" });
+            return res.status(404).json({ message: "Nie znaleziono hodowcy o podanej nazwie!" });
         }
 
-        return res.status(200).json(breeder)
+        return res.status(200).json(breeder);
     } catch(err) {
         return res.status(500).json({ error: "Błąd bazy danych: " + err.message });
     }
@@ -34,7 +35,7 @@ router.post("/", async (req, res) => {
             return res.status(400).json({ error: "Pole 'country' (Kod ISO) jest wymagane!" });
         }
 
-        const foundCountry = await Country.findOne({ code: countryCode });
+        const foundCountry = await Country.findOne({ code: countryCode.toUpperCase() });
         if(!foundCountry) {
             return res.status(400).json({ error: `Kraj o podanym kodzie ISO: ${countryCode} nie istnieje` });
         }
@@ -46,38 +47,50 @@ router.post("/", async (req, res) => {
 
         return res.status(201).json(newBreeder);
     } catch(err) {
-        res.status(400).json({ error: "Nie udało się dodać hodowcy: " + err.message });
+        return res.status(400).json({ error: "Nie udało się dodać hodowcy: " + err.message });
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:name", async (req, res) => {
     try {
-        const updatedBreeder = await Breeder.findByIdAndUpdate(
-            req.params.id,
+        const breederName = req.params.name;
+
+        if (req.body.country) {
+            const foundCountry = await Country.findOne({ code: req.body.country.toUpperCase() });
+            if (!foundCountry) {
+                return res.status(400).json({ error: `Kraj o podanym kodzie ISO: ${req.body.country} nie istnieje` });
+            }
+            req.body.country = foundCountry._id;
+        }
+
+        const updatedBreeder = await Breeder.findOneAndUpdate(
+            { name: breederName },
             req.body,
-            { new: true, runValidatos: true }
-        )
+            { new: true, runValidators: true } 
+        );
 
         if(!updatedBreeder) {
             return res.status(404).json({ message: "Nie znaleziono hodowcy do edycji"});
         }
 
-        res.status(200).json(updatedBreeder);
+        return res.status(200).json(updatedBreeder);
     } catch(err) {
         return res.status(400).json({ error: "Błąd podczas edycji: " + err.message });
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:name", async (req, res) => {
     try {
-        const deletedBreeeder = await Breeder.findByIdAndDelete(req.params.id);
-        if(!deletedBreeeder) {
-            return res.status(404).json({ message: "Nie znaleziono hodowcy do usunięcia: "});
+        const breederName = req.params.name;
+
+        const deletedBreeder = await Breeder.findOneAndDelete({ name: breederName });
+        if(!deletedBreeder) {
+            return res.status(404).json({ message: "Nie znaleziono hodowcy do usunięcia!" });
         }
 
-       return res.status(200).json(deletedBreeeder);
+        return res.status(200).json(deletedBreeder);
     } catch(err) {
-        res.status(400).json({ error: "Błąd podczas usuwania danych: " + err.message });
+        return res.status(400).json({ error: "Błąd podczas usuwania danych: " + err.message });
     }
 });
 

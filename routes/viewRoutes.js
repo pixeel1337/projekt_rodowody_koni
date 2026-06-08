@@ -1,5 +1,6 @@
 import express from "express";
 import { Horse } from "../models/Horse.js";
+import { de } from "@faker-js/faker";
 
 const router = express.Router();
 
@@ -20,53 +21,21 @@ router.get("/", async (req, res) => {
     }
 });
 
-
-// router.get("/dashboard", ensureAuthenticated, async (req, res) => {
-//     try {
-//         const searchQuery = req.query.search || "";
-//         const genderQuery = req.query.gender || "";
-//         let query = {};
-
-//         if(searchQuery) {
-//             query.name = { $regex: searchQuery, $options: "i"};
-//         }
-
-//         if(genderQuery) {
-//             query.gender = genderQuery;
-//         }
-
-//         const horses = await Horse.find({query});
-
-//         res.render("dashboard", {
-//             admin: req.user,
-//             horses: horses,
-//             searchQuery: searchQuery
-//         })
-//     } catch(err) {
-//         res.status(500).send("Błąd serwera przy ładowaniu panelu!");
-//     }
-// });
-
 router.get("/dashboard", ensureAuthenticated, async (req, res) => {
     try {
-        // .trim() usuwa przypadkowe spacje z początku i końca tekstu
         const searchQuery = (req.query.search || "").trim();
         const genderQuery = req.query.gender || "";
         
         let query = {};
 
-        // 🔥 Sprawdzamy, czy użytkownik WPISAŁ coś sensownego (długość tekstu większa niż 0)
         if (searchQuery.length > 0) {
             query.name = { $regex: searchQuery, $options: "i" };
         }
 
-        // 🔥 Sprawdzamy, czy użytkownik WYBRAŁ płeć inną niż domyślna pusta opcja
         if (genderQuery !== "") {
-            // Bezpieczna wersja ignorująca wielkość liter w bazie (ogier / Ogier)
             query.gender = { $regex: `^${genderQuery}$`, $options: "i" };
         }
 
-        // Dla świętego spokoju – zobaczysz w terminalu, co faktycznie leci do MongoDB
         console.log("=== KONTROLA BAZY ===");
         console.log("Do bazy leci zapytanie:", query);
 
@@ -82,5 +51,38 @@ router.get("/dashboard", ensureAuthenticated, async (req, res) => {
     }
 });
 
+async function getAncestors(horseID, actualGeneration, maxGeneration) {
+    if(!horseID || actualGeneration > maxGeneration) {
+        return null;
+    }    
+
+    const horse = await Horse.findById(horseID).populate("birthCountry");
+    if(!horse) {
+        return null;
+    }
+
+    const horseData = horse.toObject();
+
+    horseData.fatherTree = await getAncestors(horse.father, actualGeneration + 1, maxGeneration);
+    horseData.motherTree = await getAncestors(horse.mother, actualGeneration + 1, maxGeneration);
+
+    return horseData;
+}
+
+router.get("/horses/:id/pedigree", ensureAuthenticated, async (req, res) => {
+    try {
+        const horseID = req.params.id;
+        const depth = parseInt(req.query.generations) || 3;
+        const tree = await getAncestors(horseID, 1, depth);
+
+        res.render("pedigree", {
+            horse: tree,
+            generations: depth
+        });
+
+    } catch(err) {
+        return res.status(500).send("Błąd przy ładowaniu serwera!");
+    }
+})
 
 export default router;
