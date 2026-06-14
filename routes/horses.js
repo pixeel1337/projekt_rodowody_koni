@@ -67,16 +67,19 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:name/:birthYear", async (req, res) => {
     try {
-        const horse = await Horse.findById(req.params.id)
+        const horse = await Horse.findOne({ 
+            name: req.params.name, 
+            birthYear: parseInt(req.params.birthYear) 
+        })
         .populate("breeder")
         .populate("birthCountry")
         .populate("father")
         .populate("mother");
 
         if(!horse) {
-            return res.status(404).json({ message: "Nie znaleziono konia o podanym ID!" });
+            return res.status(404).json({ message: "Nie znaleziono konia o podanych danych!" });
         }
 
         return res.status(200).json(horse);
@@ -130,34 +133,115 @@ router.post("/", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:name/:birthYear", async (req, res) => {
     try {
-        const updatedHorse = await Horse.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
+        const horseName = req.params.name;
+        const horseBirthYear = parseInt(req.params.birthYear);
 
-        if(!updatedHorse) {
+        const horse = await Horse.findOne({ name: horseName, birthYear: horseBirthYear });
+        if(!horse) {
             return res.status(404).json({ message: "Nie znaleziono konia do edycji!" });
         }
 
-        return res.status(200).json(updatedHorse);
+        const { breeder, birthCountry, father, mother } = req.body;
+
+        if(breeder) {
+            const foundBreeder = await findBreederByUserID(breeder);
+            if(!foundBreeder) return res.status(400).json({ error: "Hodowca nie istnieje!" });
+            req.body.breeder = foundBreeder._id;
+        }
+        if(birthCountry) {
+            const foundCountry = await Country.findOne({ code: birthCountry.toUpperCase() });
+            if(!foundCountry) return res.status(400).json({ error: "Kraj nie istnieje!" });
+            req.body.birthCountry = foundCountry._id;
+        }
+        if(father) {
+            const foundFather = await findHorseByUserID(father);
+            if(!foundFather) return res.status(400).json({ error: "Ojciec nie istnieje!" });
+            req.body.father = foundFather._id;
+        }
+        if(mother) {
+            const foundMother = await findHorseByUserID(mother);
+            if(!foundMother) return res.status(400).json({ error: "Matka nie istnieje!" });
+            req.body.mother = foundMother._id;
+        }
+
+        Object.assign(horse, req.body);
+
+        await horse.save();
+
+        return res.status(200).json(horse);
     } catch(err) {
-        return res.status(400).json({ error: "Nie udało się zakutalizować danych konia: " + err.message });
+        return res.status(400).json({ error: "Nie udało się zaktualizować danych konia: " + err.message });
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:name/:birthYear", async (req, res) => {
     try {
-        const deletedHorse = await Horse.findByIdAndDelete(req.params.id);
+        const deletedHorse = await Horse.findOneAndDelete({ 
+            name: req.params.name, 
+            birthYear: parseInt(req.params.birthYear) 
+        });
+
         if(!deletedHorse) {
-            return res.status(404).json({ message: "Nie znaleziono konia do usunięcia" });
+            return res.status(404).json({ message: "Nie znaleziono konia do usunięcia!" });
         }
 
         return res.status(200).json(deletedHorse);
     } catch(err) {
         return res.status(400).json({ error: "Nie udało się usunąć konia: " + err.message });
+    }
+});
+
+router.get("/:name/:birthYear/delete", async (req, res) => {
+    try {
+        const deletedHorse = await Horse.findOneAndDelete({ 
+            name: req.params.name, 
+            birthYear: parseInt(req.params.birthYear) 
+        });
+
+        if(!deletedHorse) {
+            return res.status(404).send("Nie znaleziono konia do usunięcia!");
+        }
+
+        return res.redirect("/dashboard");
+    } catch(err) {
+        return res.status(500).send("Błąd serwera podczas usuwania: " + err.message);
+    }
+});
+
+router.get("/:name/:birthYear/offspring", async (req, res) => {
+    try {
+        const parentName = req.params.name;
+        const parentBirthYear = parseInt(req.params.birthYear);
+
+        const parent = await Horse.findOne({ name: parentName, birthYear: parentBirthYear });
+        
+        if (!parent) {
+            return res.status(404).json({ message: "Nie znaleziono konia-rodzica o podanych danych!" });
+        }
+
+        const offspring = await Horse.find({
+            $or: [
+                { father: parent._id },
+                { mother: parent._id }
+            ]   
+        })
+        .populate("breeder")
+        .populate("birthCountry");
+
+        return res.status(200).json({
+            parent: {
+                name: parent.name,
+                birthYear: parent.birthYear,
+                gender: parent.gender
+            },
+            count: offspring.length,
+            offspring: offspring
+        });
+
+    } catch (err) {
+        return res.status(500).json({ error: "Błąd podczas pobierania potomstwa: " + err.message });
     }
 });
 

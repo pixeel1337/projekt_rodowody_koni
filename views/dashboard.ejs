@@ -173,8 +173,7 @@
                         
                         <div class="admin-ops">
                             <a href="/horses/<%= horse._id %>/edit" class="btn btn-edit">Edytuj</a>
-                            <a href="/api/horses/<%= horse._id %>/delete" class="btn btn-delete">Usuń</a>
-                        </div>
+                            <a href="/api/horses/<%= horse.name %>/<%= horse.birthYear %>/delete" class="btn btn-delete">Usuń</a>                        </div>
                     </div>
                 </div>
             <% }) %>
