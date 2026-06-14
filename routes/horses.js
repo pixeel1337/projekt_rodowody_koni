@@ -2,6 +2,7 @@ import express from "express";
 import { Horse } from "../models/Horse.js";
 import { Country } from "../models/Country.js";
 import { Breeder } from "../models/Breeder.js";
+import { name } from "ejs";
 
 const router = express.Router();
 
@@ -90,50 +91,57 @@ router.get("/:name/:birthYear", async (req, res) => {
 
 router.post("/", async (req, res) => {
     try {
-        const { breeder, birthCountry, father, mother } = req.body;
+        const { name, birthYear, gender, ointment, breeder, birthCountry, father, mother } = req.body;
 
-        if(breeder) {
-            const foundBreeder = await findBreederByUserID(breeder);
-            if(!foundBreeder) {
-                return res.status(400).json({ error: "Hodowca nie istnieje w bazie!" });
-            }
-            req.body.breeder = foundBreeder._id;
+        if(!name || !birthYear || !gender || !ointment || !birthCountry || !breeder) {
+            return res.status(400).json({ error: "Niekompletne dane!" });
         }
 
-        if(birthCountry) {
-            const foundBirthCountry = await Country.findOne({ code: birthCountry.toUpperCase() });
-            if(!foundBirthCountry) {
-                return res.status(400).json({ error: "Kraj urodzenia o podanym kodzie ISO nie istnieje!" });
-            }
-            req.body.birthCountry = foundBirthCountry._id; 
+        const horseData = {
+            name, 
+            birthYear: parseInt(birthYear),
+            gender,
+            ointment, 
+            notes: req.body.notes
         }
+
+        const foundBreeder = await findBreederByUserID(breeder);
+        if(!foundBreeder) {
+            return res.status(400).json({ error: "Hodowca nie istnieje w bazie!" });
+        }
+        horseData.breeder = foundBreeder._id;
+
+        const foundCountry = await Country.findOne({ code: birthCountry.toUpperCase() });
+        if(!foundCountry) {
+            return res.status(400).json({ error: "Kraj nie istnieje w bazie!" });
+        }
+        horseData.birthCountry = foundCountry._id;
 
         if(father) {
             const foundFather = await findHorseByUserID(father);
             if(!foundFather) {
-                return res.status(400).json({ error: "Ojciec nie istnieje w bazie!" });
+                return res.status(400).json({ error: "Wskazany ojciec nie istnieje w bazie!" });
             }
-            req.body.father = foundFather._id;
+            horseData.father = foundFather._id;
         }
 
         if(mother) {
             const foundMother = await findHorseByUserID(mother);
             if(!foundMother) {
-                return res.status(400).json({ error: "Matka nie istnieje w bazie!" });
+                return res.status(400).json({ error: "Wskazana matka nie istnieje w bazie!" });
             }
-            req.body.mother = foundMother._id; 
+            horseData.mother = foundMother._id;
         }
 
-        const newHorse = new Horse(req.body);
-        await newHorse.save();
-
+        const newHorse = new Horse(horseData);
+        await newHorse.save()
         return res.status(201).json(newHorse);
     } catch(err) {
         return res.status(400).json({ error: "Nie udało się dodać konia: " + err.message });
     }
 });
 
-router.put("/:name/:birthYear", async (req, res) => {
+router.patch("/:name/:birthYear", async (req, res) => {
     try {
         const horseName = req.params.name;
         const horseBirthYear = parseInt(req.params.birthYear);
@@ -143,31 +151,38 @@ router.put("/:name/:birthYear", async (req, res) => {
             return res.status(404).json({ message: "Nie znaleziono konia do edycji!" });
         }
 
-        const { breeder, birthCountry, father, mother } = req.body;
+        const { name, birthYear, gender, ointment, breeder, birthCountry, father, mother } = req.body;
 
-        if(breeder) {
+        if (name) horse.name = name;
+        if (birthYear) horse.birthYear = parseInt(birthYear);
+        if (gender) horse.gender = gender;
+        if (ointment) horse.ointment = ointment;
+        if (req.body.notes !== undefined) horse.notes = req.body.notes;
+
+        if (breeder) {
             const foundBreeder = await findBreederByUserID(breeder);
-            if(!foundBreeder) return res.status(400).json({ error: "Hodowca nie istnieje!" });
-            req.body.breeder = foundBreeder._id;
+            if (!foundBreeder) return res.status(400).json({ error: `Hodowca '${breeder}' nie istnieje!` });
+            horse.breeder = foundBreeder._id;
         }
-        if(birthCountry) {
+
+        if (birthCountry) {
             const foundCountry = await Country.findOne({ code: birthCountry.toUpperCase() });
-            if(!foundCountry) return res.status(400).json({ error: "Kraj nie istnieje!" });
-            req.body.birthCountry = foundCountry._id;
+            if (!foundCountry) return res.status(400).json({ error: `Kraj o kodzie ISO '${birthCountry}' nie istnieje!` });
+            horse.birthCountry = foundCountry._id;
         }
-        if(father) {
+
+        if (father) {
             const foundFather = await findHorseByUserID(father);
-            if(!foundFather) return res.status(400).json({ error: "Ojciec nie istnieje!" });
-            req.body.father = foundFather._id;
+            if (!foundFather) return res.status(400).json({ error: `Wskazany ojciec '${father}' nie istnieje!` });
+            horse.father = foundFather._id;
         }
-        if(mother) {
+
+        if (mother) {
             const foundMother = await findHorseByUserID(mother);
-            if(!foundMother) return res.status(400).json({ error: "Matka nie istnieje!" });
-            req.body.mother = foundMother._id;
+            if (!foundMother) return res.status(400).json({ error: `Wskazana matka '${mother}' nie istnieje!` });
+            horse.mother = foundMother._id;
         }
-
-        Object.assign(horse, req.body);
-
+        
         await horse.save();
 
         return res.status(200).json(horse);
