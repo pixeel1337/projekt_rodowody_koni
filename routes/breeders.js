@@ -1,6 +1,7 @@
 import express from "express";
 import { Breeder } from "../models/Breeder.js";
 import { Country } from "../models/Country.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -31,8 +32,14 @@ router.get("/:name", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         const countryCode = req.body.country;
-        if(!countryCode) {
-            return res.status(400).json({ error: "Pole 'country' (Kod ISO) jest wymagane!" });
+        const breederName = req.body.name;
+        if(!countryCode || !breederName) {
+            return res.status(400).json({ error: "Pola 'country' oraz 'name' są wymagane!" });
+        }
+
+        const existingBreeder = await Breeder.findOne({ name: breederName });
+        if(existingBreeder) {
+            return res.status(400).json({ error: "Hodowca o podanej nazwie istnieje już w bazie!" });
         }
 
         const foundCountry = await Country.findOne({ code: countryCode.toUpperCase() });
@@ -40,37 +47,51 @@ router.post("/", async (req, res) => {
             return res.status(400).json({ error: `Kraj o podanym kodzie ISO: ${countryCode} nie istnieje` });
         }
 
-        req.body.country = foundCountry._id;
-
-        const newBreeder = new Breeder(req.body);
+        const newBreeder = new Breeder({ name: breederName, country: foundCountry._id });
         await newBreeder.save();
-
         return res.status(201).json(newBreeder);
     } catch(err) {
         return res.status(400).json({ error: "Nie udało się dodać hodowcy: " + err.message });
     }
 });
 
-router.put("/:name", async (req, res) => {
+router.patch("/:name", async (req, res) => {
     try {
         const breederName = req.params.name;
+        const updatedName = req.body.name;
+        
+        const updatedData = {};
 
-        if (req.body.country) {
-            const foundCountry = await Country.findOne({ code: req.body.country.toUpperCase() });
-            if (!foundCountry) {
-                return res.status(400).json({ error: `Kraj o podanym kodzie ISO: ${req.body.country} nie istnieje` });
+        if(updatedName) {
+            if(updatedName != breederName) {
+                const ifNameOccupied = await Breeder.findOne({ name: updatedName });
+                if(ifNameOccupied) {
+                    return res.status(400).json({ error: "Ta nazwa hodowcy już istnieje w bazie!" });
+                }
             }
-            req.body.country = foundCountry._id;
+            updatedData.name = updatedName;
+        }
+
+        if(req.body.country) {
+            const foundCountry = await Country.findOne({ code: req.body.country.toUpperCase() });
+            if(!foundCountry) {
+                return res.status(400).json({ error: "Kraj o podanym ISO nie znajduje się w bazie! "});
+            }
+            updatedData.country = foundCountry._id;
+        }
+
+        if(req.body.notes !== undefined) {
+            updatedData.notes = req.body.notes;
         }
 
         const updatedBreeder = await Breeder.findOneAndUpdate(
             { name: breederName },
-            req.body,
-            { new: true, runValidators: true } 
+            updatedData,
+            { new: true, runValidators: true }
         );
 
         if(!updatedBreeder) {
-            return res.status(404).json({ message: "Nie znaleziono hodowcy do edycji"});
+            return res.status(404).json({ message: "Nie znaleziono hodowcy do edycji!" });
         }
 
         return res.status(200).json(updatedBreeder);
@@ -82,13 +103,18 @@ router.put("/:name", async (req, res) => {
 router.delete("/:name", async (req, res) => {
     try {
         const breederName = req.params.name;
-
-        const deletedBreeder = await Breeder.findOneAndDelete({ name: breederName });
-        if(!deletedBreeder) {
-            return res.status(404).json({ message: "Nie znaleziono hodowcy do usunięcia!" });
+        const breeder = await Breeder.findOne({ name: breederName });
+        if(!breeder) {
+            return res.status(404).json({ message: "Nie znaleziono hodowcy o podanej nazwie!" });
         }
 
-        return res.status(200).json(deletedBreeder);
+        const connectedHorses = await mongoose.model("Horse").countDocuments({ breeder: breeder._id });
+        if(connectedHorses > 0) {
+            return res.status(400).json({ error: "Nie można usunąc hodowcy ponieważ w bazie istnieją powiązania z nim!" });
+        }
+
+        await Breeder.deleteOne({ name: breederName });
+        return res.status(200).json(breeder);
     } catch(err) {
         return res.status(400).json({ error: "Błąd podczas usuwania danych: " + err.message });
     }
