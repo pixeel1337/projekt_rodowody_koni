@@ -50,7 +50,8 @@ router.post("/", async (req, res) => {
     }
 });
 
-router.put("/:code", async (req, res) => {
+
+router.patch("/:code", async (req, res) => {
     try {
         const countryCode = req.params.code.toUpperCase();
 
@@ -70,7 +71,7 @@ router.put("/:code", async (req, res) => {
 
         return res.status(200).json(updatedCountry);
     } catch(err) {
-        res.status(400).json({ error: "Błąd podczas edycji" + err.message });
+        res.status(400).json({ error: "Błąd podczas edycji " + err.message });
     }
 });
 
