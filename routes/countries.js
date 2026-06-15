@@ -1,6 +1,6 @@
 import express from "express";
 import { Country } from "../models/Country.js";
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 const router = express.Router();
 

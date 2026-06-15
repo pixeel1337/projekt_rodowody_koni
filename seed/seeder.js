@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { faker } from "@faker-js/faker";
+import { fakerPL } from "@faker-js/faker";
 import { Country } from "../models/Country.js";
 import { Breeder } from "../models/Breeder.js";
 import { Horse } from "../models/Horse.js";
@@ -10,7 +11,7 @@ const ointmentEnum = ["siwa", "gniada", "kasztanowata", "kara"];
 const genderEnum = ["ogier", "klacz", "wałach"];
 let globalCountries = [];
 let globalBreeders = [];
-let horseCounter = 1;
+
 
 async function generateFatherLine(childBirthYear, currentGeneration) {
     if (currentGeneration > 6) return null;
@@ -21,22 +22,27 @@ async function generateFatherLine(childBirthYear, currentGeneration) {
     const fatherID = await generateFatherLine(fatherBirthYear, currentGeneration + 1);
     const motherID = await generateMotherLine(fatherBirthYear, currentGeneration + 1);
 
-    let prefix = "Ojciec";
-    if (currentGeneration === 3) prefix = "Dziadek (ojciec ojca)";
-    if (currentGeneration >= 4) prefix = `Pradziadek-P${currentGeneration}`;
-
-    const ancestor = await Horse.create({
-        name: `${prefix} ${faker.person.firstName()} #${horseCounter++}`,
-        birthYear: fatherBirthYear,
-        gender: "ogier",
-        ointment: faker.helpers.arrayElement(ointmentEnum),
-        birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
-        breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
-        father: fatherID,
-        mother: motherID
-    });
-
-    return ancestor._id;
+    while (true) {
+        try {
+            const ancestor = await Horse.create({
+                name: faker.person.firstName(),
+                birthYear: fatherBirthYear,
+                gender: "ogier",
+                ointment: faker.helpers.arrayElement(ointmentEnum),
+                birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
+                breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
+                father: fatherID,
+                mother: motherID
+            });
+            return ancestor._id; 
+        } catch (err) {
+            if (err.code === 11000) {
+                console.log(`Imię powtórzyło się w tym samym roku i kraju. Losuję ponownie dla ogiera...`);
+                continue;
+            }
+            throw err; 
+        }
+    }
 }
 
 async function generateMotherLine(childBirthYear, currentGeneration) {
@@ -48,22 +54,27 @@ async function generateMotherLine(childBirthYear, currentGeneration) {
     const fatherID = await generateFatherLine(motherBirthYear, currentGeneration + 1);
     const motherID = await generateMotherLine(motherBirthYear, currentGeneration + 1);
 
-    let prefix = "Matka";
-    if (currentGeneration === 3) prefix = "Babcia (matka matki)";
-    if (currentGeneration >= 4) prefix = `Prababcia-P${currentGeneration}`;
-
-    const ancestor = await Horse.create({
-        name: `${prefix} ${faker.person.firstName()} #${horseCounter++}`,
-        birthYear: motherBirthYear,
-        gender: "klacz",
-        ointment: faker.helpers.arrayElement(ointmentEnum),
-        birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
-        breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
-        father: fatherID,
-        mother: motherID
-    });
-
-    return ancestor._id;
+    while (true) {
+        try {
+            const ancestor = await Horse.create({
+                name: faker.person.firstName(),
+                birthYear: motherBirthYear,
+                gender: "klacz",
+                ointment: faker.helpers.arrayElement(ointmentEnum),
+                birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
+                breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
+                father: fatherID,
+                mother: motherID
+            });
+            return ancestor._id;
+        } catch (err) {
+            if (err.code === 11000) {
+                console.log(`Imię powtórzyło się w tym samym roku i kraju. Losuję ponownie dla klaczy...`);
+                continue;
+            }
+            throw err;
+        }
+    }
 }
 
 async function seedDatabase() {
@@ -77,20 +88,26 @@ async function seedDatabase() {
         await Horse.deleteMany({});
 
         console.log("3. Generowanie bazy krajów...");
-        const countriesToInsert = [];
-        const usedCodes = new Set();
-
-        while (countriesToInsert.length < 15) {
-            const code = faker.location.countryCode();
-            if (!usedCodes.has(code)) {
-                usedCodes.add(code);
-                countriesToInsert.push({
-                    name: faker.location.country(),
-                    code: code
-                });
-            }
-        }
-        globalCountries = await Country.insertMany(countriesToInsert);
+        
+        const staticCountries = [
+            { code: "PL", name: "Polska" },
+            { code: "DE", name: "Niemcy" },
+            { code: "FR", name: "Francja" },
+            { code: "US", name: "Stany Zjednoczone" },
+            { code: "SA", name: "Arabia Saudyjska" },
+            { code: "AE", name: "Zjednoczone Emiraty Arabskie" },
+            { code: "GB", name: "Wielka Brytania" },
+            { code: "IT", name: "Włochy" },
+            { code: "ES", name: "Hiszpania" },
+            { code: "BE", name: "Belgia" },
+            { code: "NL", name: "Holandia" },
+            { code: "SE", name: "Szwecja" },
+            { code: "CA", name: "Kanada" },
+            { code: "AU", name: "Australia" },
+            { code: "JP", name: "Japonia" }
+        ];
+        
+        globalCountries = await Country.insertMany(staticCountries);
 
         console.log("4. Generowanie bazy hodowców...");
         const breedersToInsert = [];
@@ -112,16 +129,27 @@ async function seedDatabase() {
             const fatherID = await generateFatherLine(mainHorseBirthYear, 2);
             const motherID = await generateMotherLine(mainHorseBirthYear, 2);
 
-            await Horse.create({
-                name: `Źrebak ${faker.person.firstName()} #${horseCounter++}`,
-                birthYear: mainHorseBirthYear,
-                gender: gender,
-                ointment: faker.helpers.arrayElement(ointmentEnum),
-                birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
-                breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
-                father: fatherID,
-                mother: motherID
-            });
+            while (true) {
+                try {
+                    await Horse.create({
+                        name: faker.person.firstName(),
+                        birthYear: mainHorseBirthYear,
+                        gender: gender,
+                        ointment: faker.helpers.arrayElement(ointmentEnum),
+                        birthCountry: globalCountries[Math.floor(Math.random() * globalCountries.length)]._id,
+                        breeder: globalBreeders[Math.floor(Math.random() * globalBreeders.length)]._id,
+                        father: fatherID,
+                        mother: motherID
+                    });
+                    break;
+                } catch (err) {
+                    if (err.code === 11000) {
+                        console.log(`Losuję ponownie imię dla głównego źrebaka...`);
+                        continue;
+                    }
+                    throw err;
+                }
+            }
         }
         
         console.log("SUKCES! Baza danych została wypełniona!");

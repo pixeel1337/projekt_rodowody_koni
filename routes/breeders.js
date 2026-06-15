@@ -5,6 +5,45 @@ import mongoose from "mongoose";
 
 const router = express.Router();
 
+router.get("/search", async (req, res) => {
+    try {
+        const { name, countryCode } = req.query;
+        if(!name) {
+            return res.status(400).json({ error: "Parametr name jest wymagany!" });
+        }
+
+        if(countryCode) {
+            const country = await Country.findOne({ code: countryCode.toUpperCase() });
+            if(!country) {
+                return res.status(404).json({ error: "Nie znaleziono kraju o podanym kodzie ISO!" });
+            }
+
+            const breeder = await Breeder.findOne({ name: name, country: country._id });
+            if(!breeder) {
+                return res.status(404).json({ message: "Nie znaleziono hodowcy o podanych parametrach!" });
+            }
+            return res.json(breeder);
+        }
+
+        const breeders = await Breeder.find({ name: name }).populate("country");
+        if(breeders.length === 0) {
+            return res.status(404).json({ error: "Nie znaleziono hodowcy o podanej nazwie!" });
+        }
+        
+        if(breeders.length > 1) {
+            return res.status(400).json({
+                error: "Podana nazwa hodowcy występuje w bazie więcej niż raz!",
+                message: "Znaleziono wielu hodowców o tej nazwie. Wymagany kod kraju!",
+                wyniki: breeders.map(b => ({ id: b._id, nazwa: b.name, kraj: b.country.code }))
+            })
+        }
+
+        return res.json(breeders[0]);
+    } catch(err) {
+        return res.status(500).json({ error: "Błąd serwera" + err.message });
+    }
+});
+
 router.get("/", async (req, res) => {
     try {
         const breeders = await Breeder.find({}).populate("country");

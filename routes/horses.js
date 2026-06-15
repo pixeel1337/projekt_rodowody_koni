@@ -2,7 +2,6 @@ import express from "express";
 import { Horse } from "../models/Horse.js";
 import { Country } from "../models/Country.js";
 import { Breeder } from "../models/Breeder.js";
-import { name } from "ejs";
 
 const router = express.Router();
 
@@ -54,6 +53,63 @@ async function findBreederByUserID(identifier) {
      return await Breeder.findOne({ name: parts.join(" ") });
 }
 
+
+router.get("/search", async (req, res) => {
+    try {
+        const { name, birthYear, countryCode } = req.query;
+        if(!name) {
+            return res.status(400).json({ error: "Parametr name jest wymagany!" });
+        }
+
+        if(birthYear && countryCode) {
+            const country = await Country.findOne({ code: countryCode.toUpperCase() });
+            if(!country) {
+                return res.status(404).json({ error: "Nie znaleziono podanego kraju w bazie!" });
+            }
+
+            const horse = await Horse.findOne({
+                name: name,
+                birthYear: Number(birthYear),
+                birthCountry: country._id
+            }).populate("birthCountry breeder father mother");
+
+            if(!horse) {
+                return res.status(404).json({ message: "Nie znaleziono konia o podanych danych!" });
+            }
+            return res.json(horse);
+        }
+
+        let queryFilter = { name: name };
+        if(birthYear) {
+            queryFilter.birthYear = Number(birthYear);
+        }
+
+        const horses = await Horse.find(queryFilter).populate("birthCountry breeder");
+
+        if(horses.length === 0) {
+            return res.status(404).json({ error: "Nie znaleziono konia o podanych danych!"} );
+        }
+
+        if(horses.length > 1) {
+            return res.status(400).json({
+                error: "Istnieje więcej niż jeden koń o podanych parametrach!",
+                message: "Wymagany kod ISO kraju!",
+                wyniki: horses.map(h => ({
+                    id: h._id,
+                    nazwa: h.name,
+                    rocznik: h.birthYear,
+                    kraj: h.birthCountry.code
+                }))
+            });
+        }
+
+        const singleHorse = await Horse.findById(horses[0]._id).populate("birthCountry breeder father mother");
+        return res.json(singleHorse);
+    } catch(err) {
+        return res.status(500).json({ error: "Błąd serwera: " + err.message });
+    }
+});
+
 router.get("/", async (req, res) => {
     try {
         const horses = await Horse.find({})
@@ -88,6 +144,7 @@ router.get("/:name/:birthYear", async (req, res) => {
         return res.status(500).json({ error: "Błąd bazy danych: " + err.message });
     }
 });
+
 
 router.post("/", async (req, res) => {
     try {
